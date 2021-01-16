@@ -1,3 +1,6 @@
+from collections import Mapping
+from typing import Optional, Union, List
+
 class cached_property:
     def __init__(self, func, name=None):
         self.func = func
@@ -28,7 +31,7 @@ class RESTObject:
         return f'<{self.__class__.__name__} object>'
 
 
-class RESTList(RESTObject):
+class RESTList:
     '''
     Base DataClass for defining List objects.
     '''
@@ -39,49 +42,49 @@ class RESTList(RESTObject):
             raise TypeError(f'received type {type(j)}, expected list')
 
         self._data = j
-        for l in j:
-            for k, v in l.items():
-                setattr(self, k, v)
 
 
     def __getitem__(self, i):
         raise NotImplementedError('__getitem__')
 
-
     def __repr__(self):
         return f'<{self.__class__.__name__} object len: {len(self._data)}>'
 
-
-class Summoner(RESTObject):
-    @cached_property
-    def matches(self):
-        x = self.client.get_matches(self)
-        print(x)
-        return x
-
-    @cached_property
-    def top_champions(self):
-        return self.client.get_champions(self)
-
-    def __repr__(self):
-        return f'<{self.__class__.__name__} object summoner: {self.name}>'
+    def __str__(self):
+        return '[' + ', '.join(repr(item) for item in self) + ']'
 
 
-class Champion(RESTObject):
-    pass
+class Team(RESTObject):
+    def __init__(self, d, client):
+        super().__init__(d)
+        self.bans = Champions.from_ids([ban['championId'] for ban in self.bans], client)
+
+
+class Teams(RESTList):
+    def __getitem__(self, i):
+        return Team(self._data[i], self.client)
+
+
+class Participants(RESTList):
+    def __getitem__(self, i): # return Summoner object instead of Riot's participant data, to-do: implement caching for this method
+        # the Participant Id can be inferred from the order of the list
+        return self.client.get_summoner_by_id(self._data[i]['player']['currentAccountId'])
 
 
 class Match(RESTObject):
-    pass
+    def __init__(self, d, client):
+        super().__init__(d, client)
+        self.participants = Participants(self.participantIdentities, client)
+        self.teams = Teams(self.teams, client)
+        del self.participantIdentities # prevent bloating the class with repeated information
+
+    def __repr__(self):
+        return f'<{self.__class__.__name__} id: {self.gameId}>'
 
 
 class Rank(RESTObject):
-    pass
-
-
-class Champions(RESTList):
-    def __getitem__(self, i):
-        return Champion(self._data[i], self.client)
+    def __repr__(self):
+        return f'<{self.__class__.__name__} queue type: {self.queueType}>'
 
 
 class Matches(RESTList):
@@ -92,3 +95,87 @@ class Matches(RESTList):
 class Ranks(RESTList):
     def __getitem__(self, i):
         return Rank(self._data[i], self.client)
+
+
+class Mastery(RESTObject):
+    def __init__(self, d, client):
+        super().__init__(d, client)
+        self.champion = self.client.champion_constants.from_id(self.championId)
+
+
+class Masteries(RESTList):
+    def __getitem__(self, i) -> Mastery:
+        return Mastery(self._data[i], self.client)
+
+
+class Champion(RESTObject):
+    def __repr__(self):
+        return f'<{self.__class__.__name__} object: {self.name}>'
+
+
+class Champions(RESTList): # implemented the other way around to other data classes
+    def __init__(self, champions: Champion):
+        self._data = champions
+
+    def __str__(self):
+        return str(self._data)
+
+    def __getitem__(self, i):
+        return self._data[i]
+
+    @classmethod
+    def from_ids(cls, ids: List[int], client):
+        return cls([client.champion_constants.from_id(id) for id in ids])
+
+    @classmethod
+    def from_names(cls, names: List[str], client):
+        return cls([client.champion_constants.get(name) for name in names])
+
+
+class StaticChampions(Mapping):
+    '''
+    Read only dictionary with static champion information i.e. Champion names and metadata
+    '''
+
+    def __init__(self, data):
+        self._data = data
+        self._id_data = {champion.get('key'):champion for _, champion in self._data.items()}
+
+    def __getitem__(self, key) -> Champion:
+        return Champion(self._data[key])
+
+    def __len__(self) -> int:
+        return len(self._data)
+
+    def __iter__(self) -> iter:
+        return iter(self._data)
+
+    def __repr__(self) -> str:
+        return f'<{self.__class__.__name__} object len: {len(self)}>'
+
+    def from_id(self, key) -> Optional[Champion]:
+        id_data = self._id_data.get(str(key))
+        if id_data:
+            return Champion(id_data)
+
+
+class Summoner(RESTObject):
+    def __repr__(self):
+        return f'<{self.__class__.__name__} object summoner: {self.name}>'
+
+    def __eq__(self, other):
+        return self.accountId == other.accountId
+
+    def matches(self, limit=10) -> Matches:
+        return self.client.get_matches(self, limit=limit)
+
+    @cached_property
+    def masteries(self) -> Masteries:
+        return self.client.get_masteries(self)
+
+    @cached_property
+    def ranks(self) -> Ranks:
+        return self.client.get_ranks(self)
+
+    def iter_matches(self) -> Match:
+        yield from self.client.gen_matches(self)
