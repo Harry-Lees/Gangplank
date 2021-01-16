@@ -75,7 +75,7 @@ class League(commands.Cog, name='League'):
 
                         break
 
-            embed = discord.Embed(title=f'Match History', description='Most recent matches shown first (limit 10)', colour=discord.Colour.blue())
+            embed = discord.Embed(title=f'Match History for {s}', description='Most recent matches shown first (limit 10)', colour=discord.Colour.blue())
             
             embed.add_field(name='Champion', value='\n'.join(c for c in champion), inline=True)
             embed.add_field(name='kda', value='\n'.join(k for k in kda), inline=True)
