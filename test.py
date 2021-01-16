@@ -11,9 +11,19 @@ if __name__ == '__main__':
     summoner = client.get_summoner('Mintybadger515')
     champions = summoner.masteries
 
-    match = summoner.matches(limit=1)[0]
+    matches = summoner.matches(limit=10)
 
-    if match.participants.index(summoner) < 5:
-        print('team 1')
-    else:
-        print('team 2')
+    for match in matches:
+        for i, participant in enumerate(match.participants):
+            s = match.participantIdentities[i]
+            if s == summoner:
+                team_index = (1, 0)[participant.teamId % 100]
+                team = match.teams[team_index]
+
+                print(client.champion_constants.from_id(participant.championId).name, end=' ')
+                print(participant.stats['kills'], end=' ')
+                print(participant.stats['deaths'], end=' ')
+                print(participant.stats['assists'], end=' ')
+                print('Won' if team.win == 'Win' else 'Lost')
+
+                break

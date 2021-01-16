@@ -26,9 +26,11 @@ class RESTObject:
         for k, v in d.items():
             setattr(self, k, v)
 
-
     def __repr__(self):
         return f'<{self.__class__.__name__} object>'
+
+    def str(self):
+        return self.__repr__()
 
 
 class RESTList:
@@ -53,6 +55,9 @@ class RESTList:
     def __str__(self):
         return '[' + ', '.join(repr(item) for item in self) + ']'
 
+    def __len__(self):
+        return len(self._data)
+
 
 class Team(RESTObject):
     def __init__(self, d, client):
@@ -65,18 +70,21 @@ class Teams(RESTList):
         return Team(self._data[i], self.client)
 
 
+class Participant(RESTObject):
+    pass
+
+
 class Participants(RESTList):
-    def __getitem__(self, i): # return Summoner object instead of Riot's participant data, to-do: implement caching for this method
-        # the Participant Id can be inferred from the order of the list
-        return self.client.get_summoner_by_id(self._data[i]['player']['currentAccountId'])
+    def __getitem__(self, i) -> Participant:
+        return Participant(self._data[i], self.client)
 
 
 class Match(RESTObject):
     def __init__(self, d, client):
         super().__init__(d, client)
-        self.participants = Participants(self.participantIdentities, client)
+        self.participantIdentities = Summoners(self.participantIdentities, client)
         self.teams = Teams(self.teams, client)
-        del self.participantIdentities # prevent bloating the class with repeated information
+        self.participants = Participants(self.participants, client)
 
     def __repr__(self):
         return f'<{self.__class__.__name__} id: {self.gameId}>'
@@ -179,3 +187,25 @@ class Summoner(RESTObject):
 
     def iter_matches(self) -> Match:
         yield from self.client.gen_matches(self)
+
+
+class Summoners(RESTList):
+    '''
+    to-do: implement caching of summoners to lower number of API calls
+    '''
+
+    def __str__(self):
+        return '[' + ', '.join(str(self.client.get_summoner_by_id(summoner['player']['currentAccountId'])) for summoner in self._data) + ']'
+
+    def __getitem__(self, i):
+        if isinstance(i, slice):
+            return [self.client.get_summoner_by_id(self._data[ii]['player']['currentAccountId']) for ii in range((len(self)))]
+        elif isinstance(i, int):
+            if i < 0:
+                i += len(self)
+            if i < 0 or i >= len(self):
+                raise IndexError(f'The index {i} is out of range')
+        else:
+            raise TypeError('Argument must be type int or slice')
+
+        return self.client.get_summoner_by_id(self._data[i]['player']['currentAccountId'])

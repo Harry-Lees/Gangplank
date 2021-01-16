@@ -40,8 +40,8 @@ class League(commands.Cog, name='League'):
         ctx.send('command not implemented yet')
 
     @commands.command(name='chests')
-    async def available_chests(self, ctx, *s: List[str]):
-        s = self.sanitise_name(s)
+    async def available_chests(self, ctx, *, s):
+        # s = self.sanitise_name(s)
 
         async with ctx.typing():
             summoner = self.client.get_summoner(s)
@@ -54,15 +54,31 @@ class League(commands.Cog, name='League'):
             await ctx.send(embed=embed)
 
     @commands.command(name='match_history')
-    async def match_history(self, ctx, *s: List[str]):
-        s = self.sanitise_name(s)
+    async def match_history(self, ctx, *, s: str):
+        # s = self.sanitise_name(s)
 
-        async with ctx.typing()
+        async with ctx.typing():
             summoner = self.client.get_summoner(s)
-            matches = summoner.matches
+            matches = summoner.matches(limit=10)
+
+            champion, kda, outcome = [], [], []
+            for match in matches:
+                for i, participant in enumerate(match.participants):
+                    temp_summoner = match.participantIdentities[i]
+                    if temp_summoner == summoner:
+                        team_index = (1, 0)[participant.teamId % 100]
+                        team = match.teams[team_index]
+
+                        champion.append(self.client.champion_constants.from_id(participant.championId).name)
+                        kda.append('/'.join([str(participant.stats['kills']), str(participant.stats['deaths']), str(participant.stats['assists'])]))
+                        outcome.append('Victory' if team.win == 'Win' else 'Defeat')
+
+                        break
 
             embed = discord.Embed(title=f'Match History', description='Most recent matches shown first (limit 10)', colour=discord.Colour.blue())
             
-            embed.add_field(name='Champion Played', value='', inline=True)
-            embed.add_field(name='Won', value='', inline=True)
-            embed.add_field(name='Game Type', value='', inline=True)
+            embed.add_field(name='Champion', value='\n'.join(c for c in champion), inline=True)
+            embed.add_field(name='kda', value='\n'.join(k for k in kda), inline=True)
+            embed.add_field(name='Win', value='\n'.join(o for o in outcome), inline=True)
+
+            await ctx.send(embed=embed)
