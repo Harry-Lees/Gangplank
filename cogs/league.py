@@ -1,15 +1,11 @@
-from .classes.client import Client
-import discord
-from discord.ext import commands
-from discord.utils import get
-from datetime import datetime, timedelta
-from uuid import uuid1
-from os import remove
-import matplotlib
-import matplotlib.pyplot as plt
-import sqlite3
 from os import getenv
 from typing import Union, List
+
+from discord import Colour, Embed
+from discord.ext import commands
+
+from .classes.client import Client
+
 
 def setup(bot):
     bot.add_cog(League(bot))
@@ -22,19 +18,28 @@ class League(commands.Cog, name='League'):
 
     @commands.command(name='profile')
     async def profile(self, ctx, *, s: str):
-        s = self.sanitise_name(s)
-
         async with ctx.typing():
             summoner = self.client.get_summoner(s)
         ctx.send('command not implemented yet')
+
+    @commands.command(name='status')
+    async def status(self, ctx: object, region: str):
+        async with ctx.typing():
+            status = self.client.get_status(region)
+        
+        await ctx.send(str(status))
 
     @commands.command(name='chests')
     async def available_chests(self, ctx, *, s: str):
         async with ctx.typing():
             summoner = self.client.get_summoner(s)
             masteries = summoner.masteries
-            
-            embed = discord.Embed(title=f'Available Chests for {s}', description='Sorted by champion mastery (limit 10)', colour=discord.Colour.blue())
+
+            embed = Embed(
+                title=f'Available Chests for {s}',
+                description='Sorted by champion mastery (limit 10)',
+                colour=Colour.blue(),
+            )
             champions = [c.champion.name for c in masteries if not c.chestGranted]
             embed.add_field(name='Champion', value='\n'.join(champions[:10]))
 
@@ -54,16 +59,36 @@ class League(commands.Cog, name='League'):
                         team_index = (1, 0)[participant.teamId % 100]
                         team = match.teams[team_index]
 
-                        champion.append(self.client.champion_constants.from_id(participant.championId).name)
-                        kda.append('/'.join([str(participant.stats['kills']), str(participant.stats['deaths']), str(participant.stats['assists'])]))
+                        champion.append(
+                            self.client.champion_constants.from_id(
+                                participant.championId
+                            ).name
+                        )
+                        kda.append(
+                            '/'.join(
+                                [
+                                    str(participant.stats['kills']),
+                                    str(participant.stats['deaths']),
+                                    str(participant.stats['assists']),
+                                ]
+                            )
+                        )
                         outcome.append('Victory' if team.win == 'Win' else 'Defeat')
 
                         break
 
-            embed = discord.Embed(title=f'Match History for {s}', description='Most recent matches shown first (limit 10)', colour=discord.Colour.blue())
-            
-            embed.add_field(name='Champion', value='\n'.join(c for c in champion), inline=True)
+            embed = Embed(
+                title=f'Match History for {s}',
+                description='Most recent matches shown first (limit 10)',
+                colour=Colour.blue(),
+            )
+
+            embed.add_field(
+                name='Champion', value='\n'.join(c for c in champion), inline=True
+            )
             embed.add_field(name='kda', value='\n'.join(k for k in kda), inline=True)
-            embed.add_field(name='Win', value='\n'.join(o for o in outcome), inline=True)
+            embed.add_field(
+                name='Win', value='\n'.join(o for o in outcome), inline=True
+            )
 
             await ctx.send(embed=embed)

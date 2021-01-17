@@ -1,12 +1,12 @@
-from collections import Mapping
+from collections.abc import Mapping
 from typing import Optional, Union, List
+
 
 class cached_property:
     def __init__(self, func, name=None):
         self.func = func
         self.__doc__ = getattr(func, '__doc__')
         self.name = name or func.__name__
-
 
     def __get__(self, instance, cls=None):
         if instance is None:
@@ -44,7 +44,6 @@ class RESTList:
             raise TypeError(f'received type {type(j)}, expected list')
 
         self._data = j
-
 
     def __getitem__(self, i):
         raise NotImplementedError('__getitem__')
@@ -121,7 +120,7 @@ class Champion(RESTObject):
         return f'<{self.__class__.__name__} object: {self.name}>'
 
 
-class Champions(RESTList): # implemented the other way around to other data classes
+class Champions(RESTList):  # implemented the other way around to other data classes
     def __init__(self, champions: Champion):
         self._data = champions
 
@@ -147,7 +146,9 @@ class StaticChampions(Mapping):
 
     def __init__(self, data):
         self._data = data
-        self._id_data = {champion.get('key'):champion for _, champion in self._data.items()}
+        self._id_data = {
+            champion.get('key'): champion for _, champion in self._data.items()
+        }
 
     def __getitem__(self, key) -> Champion:
         return Champion(self._data[key])
@@ -195,11 +196,16 @@ class Summoners(RESTList):
     '''
 
     def __str__(self):
-        return '[' + ', '.join(str(self.client.get_summoner_by_id(summoner['player']['currentAccountId'])) for summoner in self._data) + ']'
+        return '[' + ', '.join(str(self.client.get_summoner_by_id(summoner['player']['currentAccountId'])) for summoner in self._data)+ ']'
 
     def __getitem__(self, i):
         if isinstance(i, slice):
-            return [self.client.get_summoner_by_id(self._data[ii]['player']['currentAccountId']) for ii in range((len(self)))]
+            return [
+                self.client.get_summoner_by_id(
+                    self._data[ii]['player']['currentAccountId']
+                )
+                for ii in range((len(self)))
+            ]
         elif isinstance(i, int):
             if i < 0:
                 i += len(self)
@@ -208,4 +214,6 @@ class Summoners(RESTList):
         else:
             raise TypeError('Argument must be type int or slice')
 
-        return self.client.get_summoner_by_id(self._data[i]['player']['currentAccountId'])
+        return self.client.get_summoner_by_id(
+            self._data[i]['player']['currentAccountId']
+        )
