@@ -26,8 +26,23 @@ class League(commands.Cog, name='League'):
     async def status(self, ctx: object, region: str):
         async with ctx.typing():
             status = self.client.get_status(region)
-        
-        await ctx.send(str(status))
+
+            e = Embed(
+                title=f'Status for {region.upper()}',
+                colour=Colour.blue()
+            )
+
+            for incident in status.incidents:
+                e.add_field(name='Status', value=incident['maintenance_status'])
+                e.add_field(name='Description', value=incident['updates'][-1]['translations'][0]['content'][:1024])
+                e.add_field(name='Severity', value=incident['incident_severity'])
+
+            for maintenance in status.maintenances:
+                e.add_field(name='Status', value=maintenance['maintenance_status'])
+                e.add_field(name='Description', value=maintenance['updates'][-1]['translations'][0]['content'][:1024])
+                e.add_field(name='Severity', value='N/A')
+
+        await ctx.send(embed=e)
 
     @commands.command(name='chests')
     async def available_chests(self, ctx, *, s: str):

@@ -102,4 +102,4 @@ class Client:
         url = self.build_url('status', region)
         status = self.get(url)
 
-        return status
+        return Status(status)

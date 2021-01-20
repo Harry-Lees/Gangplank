@@ -69,8 +69,10 @@ class Teams(RESTList):
         return Team(self._data[i], self.client)
 
 
-class Participant(RESTObject):
-    pass
+class Participant(RESTObject): pass
+
+
+class Status(RESTObject): pass
 
 
 class Participants(RESTList):
