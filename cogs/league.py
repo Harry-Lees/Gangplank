@@ -34,7 +34,7 @@ class League(commands.Cog, name='League'):
 
             for incident in status.incidents:
                 e.add_field(name='Status', value=incident['maintenance_status'])
-                e.add_field(name='Description', value=incident['updates'][-1]['translations'][0]['content'][:1024])
+                e.add_field(name='Description', value=incident['updates'][-1]['translations'][0]['content'][:1024]) # this field has the possibility of exceeding the character limit so it's manually limited to 1024
                 e.add_field(name='Severity', value=incident['incident_severity'])
 
             for maintenance in status.maintenances:
@@ -71,7 +71,7 @@ class League(commands.Cog, name='League'):
                 for i, participant in enumerate(match.participants):
                     temp_summoner = match.participantIdentities[i]
                     if temp_summoner == summoner:
-                        team_index = (1, 0)[participant.teamId % 100]
+                        team_index = (1, 0)[participant.teamId % 100] # convert 100, 200 to 1 or 0
                         team = match.teams[team_index]
 
                         champion.append(
