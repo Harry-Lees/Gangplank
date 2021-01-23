@@ -20,7 +20,7 @@ class League(commands.Cog, name='League'):
     async def profile(self, ctx, *, s: str):
         async with ctx.typing():
             summoner = self.client.get_summoner(s)
-        ctx.send('command not implemented yet')
+        await ctx.send('command not implemented yet')
 
     @commands.command(name='status')
     async def status(self, ctx: object, region: str):
